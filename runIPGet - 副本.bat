@@ -1,0 +1,1 @@
+SnprIpGet_cmd "TencoInfo.txt" -i "192.168.1.1:10800"
