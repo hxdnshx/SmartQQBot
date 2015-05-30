@@ -288,22 +288,36 @@ namespace SnprIpGet_cmd
                 }
                 if(args[1]=="-z")//Tenco 战斗力(则)
                 {
-                    HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://tenco.info/game/2/account/" + args[2] + "/", 60, "", null);
-                    string str = HttpHelper.GetResponseStringRegular(ret);
-                    string retstr = "\r\n用户" + args[2] + "的Tenco战斗力(则):";
-                    MatchCollection Matches = Regex.Matches(str, "images/game/2[^>]+>([^<]+)</td>[^>]+>([^<]*?戦)</td>[^>]+>([0-9]+)<sub>±([0-9]+)</sub>");
-                    if (Matches.Count == 0)
+                    try
                     {
-                        retstr += "\r\n没有找到";
-                    }
-                    else
-                    {
-                        foreach (Match mat in Matches)
+                        HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://tenco.info/game/2/account/" + args[2] + "/", 60, "", null);
+                        string str = HttpHelper.GetResponseStringRegular(ret);
+                        string retstr = "\r\n用户" + args[2] + "的Tenco战斗力(则):";
+                        MatchCollection Matches = Regex.Matches(str, "images/game/2[^>]+>([^<]+)</td>[^>]+>([^<]*?戦)</td>[^>]+>([0-9]+)<sub>±([0-9]+)</sub>");
+                        if (Matches.Count == 0)
                         {
-                            retstr += "\r\n" + mat.Result("$1") + "  " + mat.Result("$2") + "  " + mat.Result("$3") + "±" + mat.Result("$4");
+                            retstr += "\r\n没有找到";
                         }
+                        else
+                        {
+                            foreach (Match mat in Matches)
+                            {
+                                retstr += "\r\n" + mat.Result("$1") + "  " + mat.Result("$2") + "  " + mat.Result("$3") + "±" + mat.Result("$4");
+                            }
+                        }
+                        File.WriteAllText(args[0], retstr, Encoding.UTF8);
                     }
-                    File.WriteAllText(args[0], retstr, Encoding.UTF8);
+                    catch (System.Net.WebException)
+                    {
+                        File.WriteAllText(args[0], "错误!未找到用户" + args[2], Encoding.UTF8);
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        //IO Error Invaild String
+                        return;
+                    }
+                    return;
                 }
                 if(args[1] == "-t")//Tenco 战斗力
                 {
@@ -330,6 +344,11 @@ namespace SnprIpGet_cmd
                     catch(System.Net.WebException)
                     {
                         File.WriteAllText(args[0], "错误!未找到用户" + args[2], Encoding.UTF8);
+                        return;
+                    }
+                    catch(Exception e)
+                    {
+                        //IO Error Invaild String
                         return;
                     }
                     return;

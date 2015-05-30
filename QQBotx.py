@@ -26,7 +26,7 @@ FriendList = {}
 GroupList = {}
 ThreadList = []
 GroupThreadList = []
-GroupWatchList = ['145505984','431096682']
+GroupWatchList = ['145505984','431096682','209272449','79808785']
 ActiveIPList = []
 PSessionID = ''
 Referer = 'http://d.web2.qq.com/proxy.html?v=20130916001&callback=1&id=2'
@@ -136,7 +136,7 @@ def msg_handler(msgObj):
             # print "{0}:{1}".format(from_account, txt)
             targetThread = thread_exist(from_account)
             if targetThread:
-                targetThread.push(txt, msgid)
+                targetThread.push(txt, msgid, msgTime)
             else:
                 if msgType == 'sess_message':
                     isSess = 1
@@ -156,7 +156,7 @@ def msg_handler(msgObj):
                 tmpThread = pmchat_thread(tuin, service_type, group_sig, isSess)
                 tmpThread.start()
                 ThreadList.append(tmpThread)
-                tmpThread.push(txt, msgid)
+                tmpThread.push(txt, msgid, msgTime)
 
             # print "{0}:{1}".format(self.FriendList.get(tuin, 0), txt)
 
@@ -177,16 +177,18 @@ def msg_handler(msgObj):
             gid = msg['value']['info_seq']
             tuin = msg['value']['send_uin']
             seq = msg['value']['seq']
+            msgTime = msg['value']['time']
+            timeStr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msgTime))
             GroupList[guin] = gid
             if str(gid) in GroupWatchList:
                 g_exist = group_thread_exist(gid)
                 if g_exist:
-                    g_exist.handle(tuin, txt, seq)
+                    g_exist.handle(tuin, txt, seq, msgTime)
                 else:
                     tmpThread = group_thread(guin)
                     tmpThread.start()
                     GroupThreadList.append(tmpThread)
-                    tmpThread.handle(tuin, txt, seq)
+                    tmpThread.handle(tuin, txt, seq, msgTime)
                     print "Group Thread Created"
             else:
                 print str(gid) + "Group Have New Message, but Not Handle it"
@@ -477,7 +479,7 @@ class pmchat_thread(threading.Thread):
         send_msg(self.tuin, str(content), self.service_type, self.group_sig, self.isSess)
         logging.info("Reply to " + str(self.tqq) + ":" + str(content))
 
-    def push(self, ipContent, msgid):
+    def push(self, ipContent, msgid, msgTime):
         if msgid != self.lastMsgId:
             self.reply(self.replys[self.stage])
             self.inputs.append(ipContent)
@@ -550,8 +552,35 @@ class group_thread(threading.Thread):
         if match:
             print "Get Tenco Data:" + match.group(1)
             os.system("SnprIpGet_cmd \"TencoInfo" + match.group(1) + ".txt\" -t \"" + match.group(1) + "\"")
-            fp=open("./TencoInfo" + match.group(1) + ".txt")
             try:
+                fp=open("./TencoInfo" + match.group(1) + ".txt")
+            except Exception, e:
+                self.reply("查询失败,无效的字符!")
+                return True
+            try:
+                
+                infotxt=fp.read()
+                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\r','')
+                self.reply(infotxt)
+            finally:
+                fp.close()
+            print "Get Tenco Data Finish:" + match.group(1)
+            return True
+        return False
+    def tencoinfoZ(self, content):
+        pattern=re.compile(r'.*?tanco.*?{(.+)}')
+        match=pattern.match(content)
+        if match:
+            print "Get Tenco Data:" + match.group(1)
+            os.system("SnprIpGet_cmd \"TencoInfo" + match.group(1) + ".txt\" -z \"" + match.group(1) + "\"")
+            try:
+                fp=open("./TencoInfo" + match.group(1) + ".txt")
+            except Exception, e:
+                self.reply("查询失败,无效的字符!")
+                return True
+            try:
+                
                 infotxt=fp.read()
                 infotxt=infotxt.replace('\n','     ')
                 infotxt=infotxt.replace('\r','')
@@ -567,8 +596,12 @@ class group_thread(threading.Thread):
         if match:
             print "Get IP State:" + match.group(1)
             os.system("SnprIpGet_cmd \"IPInfo" + match.group(1).replace(':','.') + ".txt\" -i \"" + match.group(1) + "\"")
-            fp=open("./IPInfo" + match.group(1).replace(':','.') + ".txt")
             try:
+                fp=open("./IPInfo" + match.group(1).replace(':','.') + ".txt")
+            except Exception, e:
+                return True
+            try:
+                
                 infotxt=fp.read()
                 infotxt=infotxt.replace('\n','     ')
                 infotxt=infotxt.replace('\r','')
@@ -581,9 +614,13 @@ class group_thread(threading.Thread):
 
     def ipcheckfunc(self,ipstr):
         os.system("SnprIpGet_cmd \"IPInfo" + ipstr.replace(':','.') + ".txt\" -i \"" + ipstr + "\"")
-        fp=open("./IPInfo" + ipstr.replace(':','.') + ".txt")
-        infotxt="Unavailable"
         try:
+            fp=open("./IPInfo" + ipstr.replace(':','.') + ".txt")
+        except Exception ,e:
+            return "Unavailable"
+        try:
+            
+            infotxt="Unavailable"
             infotxt=fp.read()
         finally:
             fp.close()
@@ -601,14 +638,14 @@ class group_thread(threading.Thread):
     
 
     def ipdetect(self, content):
-        pattern=re.compile(r'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)')
+        pattern=re.compile(r'.*?([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)')
         match=pattern.match(content)
         if match:
             self.addip(match.group(1))
             print "IP List Add:" + match.group(1)
             return True
         else:
-            pattern=re.compile(r'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)')
+            pattern=re.compile(r'.*?([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)')
             match=pattern.match(content)
             if match:
                 self.addip(match.group(1)+':10800')
@@ -631,7 +668,7 @@ class group_thread(threading.Thread):
             return True
         return False
 
-    def handle(self, send_uin, content, seq):
+    def handle(self, send_uin, content, seq, msgTime):
         # 避免重复处理相同信息
         if seq != self.lastseq:
             pattern = re.compile(r'^(?:!|！)(learn|delete) {(.+)}{(.+)}')
@@ -654,6 +691,8 @@ class group_thread(threading.Thread):
                 #if self.follow(send_uin, content):
                 #    return
                 if self.tencoinfo(content):
+                    return
+                if self.tencoinfoZ(content):
                     return
                 if self.ipcheck(content):
                     return
