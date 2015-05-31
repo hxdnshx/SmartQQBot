@@ -79,9 +79,9 @@ namespace SnprIpGet_cmd
         {
             int i;
             string ret = "";
-            for (i = 0; i < 4; i++)
+            for (i = 0; i < 3; i++)
             {
-                if (i > 2)
+                if (i ==0)
                     ret = CheckIP_FXTZ(str) + "(则)";
                 else
                     ret = CheckIP(str) + "(录)";
@@ -288,11 +288,11 @@ namespace SnprIpGet_cmd
                 }
                 if(args[1]=="-z")//Tenco 战斗力(则)
                 {
+                    string retstr = "\r\n用户" + args[2] + "的Tenco战斗力(则):";
                     try
                     {
                         HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://tenco.info/game/2/account/" + args[2] + "/", 60, "", null);
                         string str = HttpHelper.GetResponseStringRegular(ret);
-                        string retstr = "\r\n用户" + args[2] + "的Tenco战斗力(则):";
                         MatchCollection Matches = Regex.Matches(str, "images/game/2[^>]+>([^<]+)</td>[^>]+>([^<]*?戦)</td>[^>]+>([0-9]+)<sub>±([0-9]+)</sub>");
                         if (Matches.Count == 0)
                         {
@@ -305,12 +305,15 @@ namespace SnprIpGet_cmd
                                 retstr += "\r\n" + mat.Result("$1") + "  " + mat.Result("$2") + "  " + mat.Result("$3") + "±" + mat.Result("$4");
                             }
                         }
-                        File.WriteAllText(args[0], retstr, Encoding.UTF8);
                     }
                     catch (System.Net.WebException)
                     {
-                        File.WriteAllText(args[0], "错误!未找到用户" + args[2], Encoding.UTF8);
+                        retstr = "错误!未找到用户" + args[2];
                         return;
+                    }
+                    try
+                    {
+                        File.WriteAllText(args[0], retstr, Encoding.UTF8);
                     }
                     catch (Exception e)
                     {
@@ -321,11 +324,11 @@ namespace SnprIpGet_cmd
                 }
                 if(args[1] == "-t")//Tenco 战斗力
                 {
+                    string retstr = "用户" + args[2] + "的Tenco战斗力(录):";
                     try
                     {
                         HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://tenco.info/game/6/account/" + args[2] + "/", 60, "", null);
                         string str = HttpHelper.GetResponseStringRegular(ret);
-                        string retstr = "用户" + args[2] + "的Tenco战斗力(录):";
                         MatchCollection Matches = Regex.Matches(str, "images/game/6[^>]+>([^<]+)</td>[^>]+>([^<]*?戦)</td>[^>]+>([0-9]+)<sub>±([0-9]+)</sub>");
                         if (Matches.Count == 0)
                         {
@@ -338,13 +341,16 @@ namespace SnprIpGet_cmd
                                 retstr += "\r\n" + mat.Result("$1") + "  " + mat.Result("$2") + "  " + mat.Result("$3") + "±" + mat.Result("$4");
                             }
                         }
-                        
-                        File.WriteAllText(args[0], retstr, Encoding.UTF8);
                     }
                     catch(System.Net.WebException)
                     {
-                        File.WriteAllText(args[0], "错误!未找到用户" + args[2], Encoding.UTF8);
+                        retstr = "错误!未找到用户!" + args[2];
+                        //File.WriteAllText(args[0], "错误!未找到用户" + args[2], Encoding.UTF8);
                         return;
+                    }
+                    try 
+                    {
+                        File.WriteAllText(args[0], retstr, Encoding.UTF8);
                     }
                     catch(Exception e)
                     {
