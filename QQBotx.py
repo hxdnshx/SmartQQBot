@@ -26,7 +26,7 @@ FriendList = {}
 GroupList = {}
 ThreadList = []
 GroupThreadList = []
-GroupWatchList = ['145505984','431096682','209272449','79808785']
+GroupWatchList = ['145505984','431096682','209272449']
 ActiveIPList = []
 PSessionID = ''
 Referer = 'http://d.web2.qq.com/proxy.html?v=20130916001&callback=1&id=2'
@@ -547,7 +547,7 @@ class group_thread(threading.Thread):
         return rsp
 
     def tencoinfo(self, content):
-        pattern=re.compile(r'.*?tenco.*?{(.+)}')
+        pattern=re.compile(r'.*?tenco.*?{([^"\n\r]+)}')
         match=pattern.match(content)
         if match:
             print "Get Tenco Data:" + match.group(1)
@@ -569,9 +569,10 @@ class group_thread(threading.Thread):
             return True
         return False
     def tencoinfoZ(self, content):
-        pattern=re.compile(r'.*?tanco.*?{(.+)}')
+        pattern=re.compile(r'.*?tanco.*?{([^"\n\r]+)}')
         match=pattern.match(content)
         if match:
+            #result=match.group(1).replace("\"","")
             print "Get Tenco Data:" + match.group(1)
             os.system("SnprIpGet_cmd \"TencoInfo" + match.group(1) + ".txt\" -z \"" + match.group(1) + "\"")
             try:
