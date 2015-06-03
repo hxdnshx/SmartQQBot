@@ -9,11 +9,12 @@ import datetime
 import time
 import threading
 import logging
+import time
 
 from HttpClient import HttpClient
 
 reload(sys)
-sys.setdefaultencoding("utf-8")
+sys.setdefaultencoding("UTF-8")
 
 HttpClient_Ist = HttpClient()
 
@@ -25,12 +26,14 @@ FriendList = {}
 GroupList = {}
 ThreadList = []
 GroupThreadList = []
-GroupWatchList = []
+GroupWatchList = ['145505984','431096682','209272449']
+ActiveIPList = []
 PSessionID = ''
 Referer = 'http://d.web2.qq.com/proxy.html?v=20130916001&callback=1&id=2'
 SmartQQUrl = 'http://w.qq.com/login.html'
 VFWebQQ = ''
 AdminQQ = '0'
+retStr= '我真是日狗了'
 
 initTime = time.time()
 
@@ -96,10 +99,10 @@ def command_handler(inputText):
 
     if match and match.group(1) == 'group':
         GroupWatchList.append(str(match.group(2)))
-        print "当前群关注列表:", GroupWatchList
+        print "Current Group Watch List:", GroupWatchList
     elif match and match.group(1) == 'ungroup':
         GroupWatchList.remove(str(match.group(2)))
-        print "当前群关注列表:", GroupWatchList
+        print "Current Group Watch List:", GroupWatchList
     else:
         pattern = re.compile(r'^(g)(\d+) (learn|delete) (.+) (.+)')
         match = pattern.match(inputText)
@@ -109,6 +112,12 @@ def command_handler(inputText):
 
         elif match and match.group(3) == 'delete' and group_thread_exist(match.group(2)):
             group_thread_exist(match.group(2)).delete(str(match.group(4)), str(match.group(5)), False)
+
+        else:
+             pattern = re.compile(r'^(retStr) (.+)')
+             match = pattern.match(inputText)
+             if match:
+                 retStr=match.group(2)
 
 
 def msg_handler(msgObj):
@@ -127,7 +136,7 @@ def msg_handler(msgObj):
             # print "{0}:{1}".format(from_account, txt)
             targetThread = thread_exist(from_account)
             if targetThread:
-                targetThread.push(txt, msgid)
+                targetThread.push(txt, msgid, msgTime)
             else:
                 if msgType == 'sess_message':
                     isSess = 1
@@ -147,7 +156,7 @@ def msg_handler(msgObj):
                 tmpThread = pmchat_thread(tuin, service_type, group_sig, isSess)
                 tmpThread.start()
                 ThreadList.append(tmpThread)
-                tmpThread.push(txt, msgid)
+                tmpThread.push(txt, msgid, msgTime)
 
             # print "{0}:{1}".format(self.FriendList.get(tuin, 0), txt)
 
@@ -168,19 +177,21 @@ def msg_handler(msgObj):
             gid = msg['value']['info_seq']
             tuin = msg['value']['send_uin']
             seq = msg['value']['seq']
+            msgTime = msg['value']['time']
+            timeStr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msgTime))
             GroupList[guin] = gid
             if str(gid) in GroupWatchList:
                 g_exist = group_thread_exist(gid)
                 if g_exist:
-                    g_exist.handle(tuin, txt, seq)
+                    g_exist.handle(tuin, txt, seq, msgTime)
                 else:
                     tmpThread = group_thread(guin)
                     tmpThread.start()
                     GroupThreadList.append(tmpThread)
-                    tmpThread.handle(tuin, txt, seq)
-                    print "群线程已生成"
+                    tmpThread.handle(tuin, txt, seq, msgTime)
+                    print "Group Thread Created"
             else:
-                print str(gid) + "群有动态，但是没有被监控"
+                print str(gid) + "Group Have New Message, but Not Handle it"
 
             # from_account = uin_to_account(tuin)
             # print "{0}:{1}".format(from_account, txt)
@@ -200,7 +211,7 @@ def combine_msg(content):
         elif len(part) > 1:
             # 如果是图片
             if str(part[0]) == "offpic" or str(part[0]) == "cface":
-                msgTXT += "[图片]"
+                msgTXT += "[Image]"
 
     return msgTXT
 
@@ -268,19 +279,19 @@ class Login(HttpClient):
         global APPID, AdminQQ, PTWebQQ, VFWebQQ, PSessionID, msgId
         self.VPath = vpath  # QRCode保存路径
         AdminQQ = int(qq)
-        print "正在获取登陆页面"
+        print "GetLoginPage"
         self.initUrl = getReValue(self.Get(SmartQQUrl), r'\.src = "(.+?)"', 'Get Login Url Error.', 1)
         html = self.Get(self.initUrl + '0')
 
-        print "正在获取appid"
+        print "GetAppid"
         APPID = getReValue(html, r'var g_appid =encodeURIComponent\("(\d+)"\);', 'Get AppId Error', 1)
-        print "正在获取login_sig"
+        print "Getlogin_sig"
         sign = getReValue(html, r'var g_login_sig=encodeURIComponent\("(.+?)"\);', 'Get Login Sign Error', 0)
         logging.info('get sign : %s', sign)
-        print "正在获取pt_version"
+        print "Getpt_version"
         JsVer = getReValue(html, r'var g_pt_version=encodeURIComponent\("(\d+)"\);', 'Get g_pt_version Error', 1)
         logging.info('get g_pt_version : %s', JsVer)
-        print "正在获取mibao_css"
+        print "Getmibao_css"
         MiBaoCss = getReValue(html, r'var g_mibao_css=encodeURIComponent\("(.+?)"\);', 'Get g_mibao_css Error', 1)
         logging.info('get g_mibao_css : %s', sign)
         StarTime = date_to_millis(datetime.datetime.utcnow())
@@ -289,9 +300,9 @@ class Login(HttpClient):
         while True:
             T = T + 1
             self.Download('https://ssl.ptlogin2.qq.com/ptqrshow?appid={0}&e=0&l=L&s=8&d=72&v=4'.format(APPID), self.VPath)
-            print "登陆二维码下载成功，请扫描"
+            print "ScanImage"
             logging.info('[{0}] Get QRCode Picture Success.'.format(T))
-            print "下载二维码用时" + pass_time() + "秒"
+            print "Time Used:" + pass_time() + "Sec"
 
             while True:
                 html = self.Get('https://ssl.ptlogin2.qq.com/ptqrlogin?webqq_type=10&remember_uin=1&login2qq=1&aid={0}&u1=http%3A%2F%2Fw.qq.com%2Fproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=0-0-{1}&mibao_css={2}&t=undefined&g=1&js_type=0&js_ver={3}&login_sig={4}'.format(APPID, date_to_millis(datetime.datetime.utcnow()) - StarTime, MiBaoCss, JsVer, sign), self.initUrl)
@@ -306,7 +317,7 @@ class Login(HttpClient):
         logging.info(ret)
         if ret[1] != '0':
             return
-        print "二维码已扫描，正在登陆"
+        print "QR Code Scaned,Logining"
         pass_time()
         # 删除QRCode文件
         if os.path.exists(self.VPath):
@@ -336,7 +347,7 @@ class Login(HttpClient):
                 LoginError = 0
             except:
                 LoginError += 1
-                print "登录失败，正在重试"
+                print "Login Failed,Retrying"
 
         if ret['retcode'] != 0:
             return
@@ -344,9 +355,9 @@ class Login(HttpClient):
         VFWebQQ = ret['result']['vfwebqq']
         PSessionID = ret['result']['psessionid']
 
-        print "QQ号：{0} 登陆成功, 用户名：{1}".format(ret['result']['uin'], tmpUserName)
+        print "Login {0} Success, UserName:{1}".format(ret['result']['uin'], tmpUserName)
         logging.info('Login success')
-        print "登陆二维码用时" + pass_time() + "秒"
+        #print "Time Used:" + pass_time() + "Sec"
 
         msgId = int(random.uniform(20000, 50000))
 
@@ -416,7 +427,7 @@ class check_msg(threading.Thread):
                 E = 0
                 continue
 
-        print "轮询错误超过五次"
+        print "Heartbeat Failed 5 Times"
 
     # 向服务器查询新消息
     def check(self):
@@ -468,7 +479,7 @@ class pmchat_thread(threading.Thread):
         send_msg(self.tuin, str(content), self.service_type, self.group_sig, self.isSess)
         logging.info("Reply to " + str(self.tqq) + ":" + str(content))
 
-    def push(self, ipContent, msgid):
+    def push(self, ipContent, msgid, msgTime):
         if msgid != self.lastMsgId:
             self.reply(self.replys[self.stage])
             self.inputs.append(ipContent)
@@ -535,12 +546,135 @@ class group_thread(threading.Thread):
             logging.info("[Reply to group " + str(self.gid) + "]:" + str(content))
         return rsp
 
-    def handle(self, send_uin, content, seq):
+    def tencoinfo(self, content):
+        pattern=re.compile(r'.*?tenco.*?{([^"\n\r]+)}')
+        match=pattern.match(content)
+        if match:
+            print "Get Tenco Data:" + match.group(1)
+            os.system("SnprIpGet_cmd \"TencoInfo" + match.group(1) + ".txt\" -t \"" + match.group(1) + "\"")
+            try:
+                fp=open("./TencoInfo" + match.group(1) + ".txt")
+            except Exception, e:
+                self.reply("查询失败,无效的字符!")
+                return True
+            try:
+                
+                infotxt=fp.read()
+                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\r','')
+                self.reply(infotxt)
+            finally:
+                fp.close()
+            print "Get Tenco Data Finish:" + match.group(1)
+            return True
+        return False
+    def tencoinfoZ(self, content):
+        pattern=re.compile(r'.*?tanco.*?{([^"\n\r]+)}')
+        match=pattern.match(content)
+        if match:
+            #result=match.group(1).replace("\"","")
+            print "Get Tenco Data:" + match.group(1)
+            os.system("SnprIpGet_cmd \"TencoInfo" + match.group(1) + ".txt\" -z \"" + match.group(1) + "\"")
+            try:
+                fp=open("./TencoInfo" + match.group(1) + ".txt")
+            except Exception, e:
+                self.reply("查询失败,无效的字符!")
+                return True
+            try:
+                
+                infotxt=fp.read()
+                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\r','')
+                self.reply(infotxt)
+            finally:
+                fp.close()
+            print "Get Tenco Data Finish:" + match.group(1)
+            return True
+        return False
+    def ipcheck(self, content):
+        pattern=re.compile(r'.*?check.*?{([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)}')
+        match=pattern.match(content)
+        if match:
+            print "Get IP State:" + match.group(1)
+            os.system("SnprIpGet_cmd \"IPInfo" + match.group(1).replace(':','.') + ".txt\" -i \"" + match.group(1) + "\"")
+            try:
+                fp=open("./IPInfo" + match.group(1).replace(':','.') + ".txt")
+            except Exception, e:
+                return True
+            try:
+                
+                infotxt=fp.read()
+                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\r','')
+                self.reply(infotxt)
+            finally:
+                fp.close()
+            print "Get IP Data Finish:" + match.group(1)
+            return True
+        return False
+
+    def ipcheckfunc(self,ipstr):
+        os.system("SnprIpGet_cmd \"IPInfo" + ipstr.replace(':','.') + ".txt\" -i \"" + ipstr + "\"")
+        try:
+            fp=open("./IPInfo" + ipstr.replace(':','.') + ".txt")
+        except Exception ,e:
+            return "Unavailable"
+        try:
+            
+            infotxt="Unavailable"
+            infotxt=fp.read()
+        finally:
+            fp.close()
+        print "Get IP Data Func:" + ipstr
+        return infotxt
+
+    def addip(self, content):
+        isrepeat=False
+        for ipinfo in ActiveIPList:
+            if cmp(ipinfo,content)==0:
+                isrepeat=True
+        if isrepeat==False:
+            ActiveIPList.append(content)
+        return isrepeat
+    
+
+    def ipdetect(self, content):
+        pattern=re.compile(r'.*?([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)')
+        match=pattern.match(content)
+        if match:
+            self.addip(match.group(1))
+            print "IP List Add:" + match.group(1)
+            return True
+        else:
+            pattern=re.compile(r'.*?([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)')
+            match=pattern.match(content)
+            if match:
+                self.addip(match.group(1)+':10800')
+                print "IP List Add:" + match.group(1) + ':10800'
+                return True
+        return False
+
+    def iplist(self, content):
+        if "来个人打" in content:
+            retstr="当前活跃对战ip:"
+            for ipinfo in ActiveIPList:
+                retinfo=self.ipcheckfunc(ipinfo)
+                retinfo=retinfo.replace('\n','     ')
+                retinfo=retinfo.replace('\r','')
+                if "Unavailable" in retinfo:
+                    ActiveIPList.remove(ipinfo)
+                else:
+                    retstr+= retinfo + '   '
+            self.reply(retstr)
+            return True
+        return False
+
+    def handle(self, send_uin, content, seq, msgTime):
         # 避免重复处理相同信息
         if seq != self.lastseq:
             pattern = re.compile(r'^(?:!|！)(learn|delete) {(.+)}{(.+)}')
             match = pattern.match(content)
-            if match:
+            if False:#match:#    Disable Learn
                 if match.group(1) == 'learn':
                     self.learn(str(match.group(2)).decode('UTF-8'), str(match.group(3)).decode('UTF-8'))
                     print self.replyList
@@ -555,14 +689,25 @@ class group_thread(threading.Thread):
                 #             if not self.callout(content):
                 #                 pass
 
-                if self.follow(send_uin, content):
+                #if self.follow(send_uin, content):
+                #    return
+                if self.tencoinfo(content):
+                    return
+                if self.tencoinfoZ(content):
+                    return
+                if self.ipcheck(content):
+                    return
+                if self.ipdetect(content):
                     return
                 if self.tucao(content):
                     return
-                if self.repeat(content):
+                if self.iplist(content):
                     return
                 if self.callout(content):
                     return
+                #if self.repeat(content):
+                #    return
+                
         else:
             print "message seq repeat detected."
         self.lastseq = seq
@@ -578,9 +723,9 @@ class group_thread(threading.Thread):
 
     def repeat(self, content):
         if self.last1 == str(content) and content != '' and content != ' ':
-            if self.repeatPicture or "[图片]" not in content:
+            if self.repeatPicture or "[Image]" not in content:
                 self.reply(content)
-                print "已复读：{" + str(content) + "}"
+                print "Repeated:{" + str(content) + "}"
                 return True
         self.last1 = content
         
@@ -597,11 +742,11 @@ class group_thread(threading.Thread):
 
             if match.group(1) == 'follow' and target not in self.followList:
                 self.followList.append(target)
-                self.reply("正在关注" + target)
+                self.reply("Watching:" + target)
                 return True
             if match.group(1) == 'unfollow' and target in self.followList:
                 self.followList.remove(target)
-                self.reply("我不关注" + target + "了！")
+                self.reply("No more Watching:" + target)
                 return True
         else:
             if str(uin_to_account(send_uin)) in self.followList:
@@ -620,12 +765,24 @@ class group_thread(threading.Thread):
                 if saves:
                     self.replyList = json.loads(saves)
         except Exception, e:
-            print "读取存档出错", e, Exception
+            print "Error Loading SaveData", e, Exception
 
     def callout(self, content):
-        if "智障机器人" in content:
-            self.reply("干嘛（‘·д·）")
-            print str(self.gid) + "有人叫我"
+        if "SnprBot" in content or "我要围观" in content:
+            file_object = open('./IPList.txt')
+            try:
+                #while True:
+                     all_the_text = file_object.read( )
+                     #if not all_the_text:
+                     #    break
+                     all_the_text=all_the_text.replace('\n','     ')
+                     all_the_text=all_the_text.replace('\r','')
+                     self.reply(all_the_text)
+                     #time.sleep(1);
+            finally:
+                file_object.close( )
+            #self.reply(retStr)
+            print str(self.gid) + "Calling me"
             return True
         return False
 
@@ -659,4 +816,4 @@ if __name__ == "__main__":
         try:
             command_handler(console_input)
         except e:
-            print "指令有误重新来", e
+            print "ErrorCommand", e

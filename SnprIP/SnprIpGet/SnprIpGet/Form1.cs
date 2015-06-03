@@ -14,11 +14,14 @@ using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 using System.Net.Sockets;
+using SnprIpGet;
+using SnprIPGet;
 
 namespace SnprIpGet
 {
     public partial class Form1 : Form
     {
+        int hardid;
         public Form1()
         {
             InitializeComponent();
@@ -26,66 +29,14 @@ namespace SnprIpGet
 
         private void button1_Click(object sender, EventArgs e)
         {
-            HttpWebResponse ret=HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/netgame/14382/", 60, "", null);
-            string str=HttpHelper.GetResponseString(ret);
-            ///bbs/read.cgi/netgame/14382/1432657204/l50">4</a> : <a rel="nofollow" href="#4">【テンプレ必読】「Hard」ネット対戦スレッド -008-
-            MatchCollection Matches = Regex.Matches(str, "/bbs/read.cgi/netgame/14382/([0-9]+)/l50[^【]{1,400}【テンプレ必読】「Hard」ネット対戦スレッド");
-            //MessageBox.Show(Matches[0].Result("$1"));
-            textBox1.Text = Matches[0].Result("$1");
+            hardid = SnprIpHelper.GetLineIdEx("Lunatic");
+            textBox1.Text = hardid.ToString();
         }
 
-        private string GetIPInfo(int talkid)
-        {
-            HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + textBox1.Text + "/" + talkid, 60, "", null);
-            string str = HttpHelper.GetResponseString(ret);
-            Match Match = Regex.Match(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
-            if(Match.Success)
-            {
-                return GetIPInfo(Match);
-            }
-            return "";
-        }
-
-        private string GetIPInfo(Match info)
-        {
-            Match infomat = Regex.Match(info.Result("$5"), "【IP:Port】([^<]+)<br>[^○]+【使用キャラ】([^<]+)");
-            if(infomat.Success)
-            {
-                return infomat.Result("$1") + " 使用角色:" + infomat.Result("$2") + "\r\n";
-            }
-            infomat = Regex.Match(info.Result("$5"), "【IP】([^<]+)<br>【Port】([^<]+)<br>[^○]+【使用キャラ】([^<]+)");
-            if (infomat.Success)
-            {
-                return infomat.Result("$1") + ":" + infomat.Result("$2") + " 使用角色:" + infomat.Result("$3") + "\r\n";
-            }
-            infomat = Regex.Match(info.Result("$5"), "&gt;&gt;([0-9]+)</a>再募集");
-            if(infomat.Success)
-            {
-                return GetIPInfo(int.Parse(infomat.Result("$1")));
-            }
-            infomat = Regex.Match(info.Result("$5"), "&gt;&gt;([0-9]+)</a>〆");
-            if (infomat.Success)
-            {
-                return GetIPInfo(int.Parse(infomat.Result("$1")));
-            }
-            return "";
-        }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + textBox1.Text + "/l15", 60, "", null);
-            string str = HttpHelper.GetResponseString(ret);
-            string retstr="当前揭示板Hard难度IP:(更新时间:" + DateTime.Now.ToString() + ")\r\n";
-            MatchCollection Matches = Regex.Matches(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
-            foreach (Match mat in Matches)
-            {
-                if(int.Parse(mat.Result("$1"))!=1)
-                {
-                    retstr += GetIPInfo(mat);
-                }
-
-            }
-            File.WriteAllText("HardInfo.txt", retstr,Encoding.UTF8);
+            string retstr = "当前揭示板Lunatic难度IP:(更新时间:" + DateTime.Now.ToString() + ")" + SnprIpHelper.GetShitabaraInfo(hardid, 20);
             textBox2.Text = retstr;
         }
 

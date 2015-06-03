@@ -1,2 +1,2 @@
 chcp 936
-python QQBotx.py .\v.jpg
+python QQBot.py .\v.jpg

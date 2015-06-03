@@ -10,76 +10,193 @@ using System.Text.RegularExpressions;
 using System.Net.Security;
 using System.Net;
 using System.Net.Sockets;
+using SnprIpGet;
 
 
 namespace SnprIPGet
 {
-    public class Class1
+    public class SnprIpHelper
     {
-        void GetHardId()
+        /*
+         * 获取指定难度的串,其中如果获取失败会再次尝试,至多10次
+         */
+        public static int GetLineIdEx(string Difficulty)
         {
-            HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/netgame/14382/", 60, "", null);
-            string str = HttpHelper.GetResponseString(ret);
-            ///bbs/read.cgi/netgame/14382/1432657204/l50">4</a> : <a rel="nofollow" href="#4">【テンプレ必読】「Hard」ネット対戦スレッド -008-
-            MatchCollection Matches = Regex.Matches(str, "/bbs/read.cgi/netgame/14382/([0-9]+)/l50[^【]{1,400}【テンプレ必読】「Lunatic」ネット対戦スレッド");
-            //MessageBox.Show(Matches[0].Result("$1"));
-            HardID = int.Parse(Matches[0].Result("$1"));
-            Console.Write("HardID Get:" + HardID + "\r\n");
+            int ret=-1;
+            for(int i=0;i<10;++i)
+            {
+                if ((ret = GetLineId(Difficulty)) != -1)
+                    break;
+            }
+            return ret;
+        }
+        /*
+        * 获取指定难度的串
+        */
+        public static int GetLineId(string Difficulty)
+        {
+            int HardID=-1;
+            HttpWebResponse ret;
+            string str;
+            try
+            {
+                ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/netgame/14382/", 60, "", null);
+                str = HttpHelper.GetResponseString(ret);
+                ///bbs/read.cgi/netgame/14382/1432657204/l50">4</a> : <a rel="nofollow" href="#4">【テンプレ必読】「Hard」ネット対戦スレッド -008-
+                MatchCollection Matches = Regex.Matches(str, ">/</font> <a rel=\"nofollow\" href=\"/bbs/read.cgi/netgame/14382/([0-9]+)/l50[^【]{1,400}【テンプレ必読】「Lunatic」ネット対戦スレッド");
+                //MessageBox.Show(Matches[0].Result("$1"));
+                HardID = int.Parse(Matches[0].Result("$1"));
+            }
+            catch(Exception)
+            {
+                //Ignore Exception,And Return -1
+            }
+            //Console.Write("HardID Get:" + HardID + "\r\n");
+            return HardID;
         }
 
-
-        private string GetIPInfo(int talkid)
+        public static string GetShitabaraInfo(int LineId,int LatestCnt)
         {
-            HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + HardID + "/" + talkid, 60, "", null);
-            string str = HttpHelper.GetResponseString(ret);
-            Match Match = Regex.Match(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
-            if (Match.Success)
+            HttpWebResponse ret;
+            string str, retstr,tmp;
+            string rcstr;//Repeat Check String;
+            List<string> ipArr=new List<string>();
+            bool fndFlag;
+            try
             {
-                return GetIPInfo(Match);
+                ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + LineId + "/l" + LatestCnt, 60, "", null);
+                str = HttpHelper.GetResponseString(ret);
+                retstr ="\r\n";// "当前揭示板Lunatic难度IP:(更新时间:" + DateTime.Now.ToString() + ")\r\n";
+                MatchCollection Matches = Regex.Matches(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
+                foreach (Match mat in Matches)
+                {
+
+                    tmp=GetIPInfo(LineId, mat);
+                    if (tmp == "") continue;//如果是空的则不执行下面的代码
+                    rcstr = Regex.Match(str, @"([^ ]+?)[ ]*使").Result("$1");
+                    fndFlag = false;
+                    for (int i = 0; i < ipArr.Count;++i)
+                    {
+                        if (ipArr[i] == rcstr) fndFlag = true;
+                    }
+
+                    if (!fndFlag)
+                    {
+                        ipArr.Add(rcstr);
+                        retstr += tmp;
+                    }
+                }
+            }
+            catch(WebException)
+            {
+                retstr = "\r\n 错误:无法访问揭示板!";
+            }
+            return retstr;
+        }
+
+        /*
+         * 获取Twitter上指定Tag上的IP信息
+         */
+        public static string GetTwitterTagInfo(string tagName)
+        {
+            HttpWebResponse ret;
+            string str, retstr;
+            try
+            {
+                ret = HttpHelper.CreateGetHttpResponse(@"https://twitter.com/hashtag/" + tagName, 60, "", null);
+                str = HttpHelper.GetResponseStringRegular(ret);
+                retstr = "推上最新ip:";
+                int i = 0;
+                string check;
+
+                MatchCollection Matches = Regex.Matches(str, "with-id\" data-aria-label-part>([^<]+)[.\\s\\S]*?last\">([^<]+)[.\\s\\S]*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+)");//"<small class=\"time\">.*?title=\"([^\"]+)\".*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9])");
+                foreach (Match mat in Matches)
+                {
+                    check = CheckIPEx(mat.Result("$3"));
+                    if (check == "Unavailable") continue;
+                    retstr += "\r\n" + mat.Result("$1") + " - " + mat.Result("$3") + "  " + check + "   " + mat.Result("$2");
+                    i++;
+                    if (i == 5) break;
+                }
+            }
+            catch(Exception e)
+            {
+                retstr = "推上最新ip:\n\r" + e.ToString();
+            }
+            return retstr;
+        }
+
+        /*
+         *  获取深秘录揭示板上指定HardID串中指定Talkid中包含的IP信息
+         *  
+         */
+        public static string GetIPInfo(int HardID, int talkid)
+        {
+            HttpWebResponse ret;
+            string str;
+            try
+            {
+                ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + HardID + "/" + talkid, 60, "", null);
+                str = HttpHelper.GetResponseString(ret);
+                Match Match = Regex.Match(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
+                if (Match.Success)
+                {
+                    return GetIPInfo(HardID, Match);
+                }
+            }
+            catch(Exception)
+            {
+                //Skip Exception,And Return Nothing
             }
             return "";
         }
 
-        private string GetIPInfo(Match info)
+        /*
+         * 获取深秘录揭示板上指定对话中的IP(不过输入的参数是已经通过正则匹配预处理了
+         */
+        private static string GetIPInfo(int  HardID, Match info)
         {
             string check;
             Match infomat = Regex.Match(info.Result("$5"), "【IP:Port】([^<]+)<br>[^○]+【使用キャラ】([^<]+)");
             if (infomat.Success)
             {
                 check = CheckIPEx(infomat.Result("$1"));
-                if (check == "Unavailable") return "";
+                if (check[0] == 'U') return "";
                 return infomat.Result("$1") + " 使用角色:" + infomat.Result("$2") + "  " + check + "\r\n";
             }
             infomat = Regex.Match(info.Result("$5"), "【IP】([^<]+)<br>【Port】([^<]+)<br>[^○]+【使用キャラ】([^<]+)");
             if (infomat.Success)
             {
                 check = CheckIPEx(infomat.Result("$1") + ":" + infomat.Result("$2"));
-                if (check == "Unavailable") return "";
+                if (check[0] == 'U') return "";
                 return infomat.Result("$1") + ":" + infomat.Result("$2") + " 使用角色:" + infomat.Result("$3") + "  " + check + "\r\n";
             }
             infomat = Regex.Match(info.Result("$5"), "&gt;&gt;([0-9]+)</a>再募集");
             if (infomat.Success)
             {
-                return GetIPInfo(int.Parse(infomat.Result("$1")));
+                return GetIPInfo(HardID,int.Parse(infomat.Result("$1")));
             }
             infomat = Regex.Match(info.Result("$5"), "&gt;&gt;([0-9]+)</a>〆");
             if (infomat.Success)
             {
-                return GetIPInfo(int.Parse(infomat.Result("$1")));
+                return GetIPInfo(HardID,int.Parse(infomat.Result("$1")));
             }
             return "";
         }
 
-        public string CheckIPEx(string str)
+        /*
+         * 混合了对录的和对则的IP检测方式的程序
+         */
+        public static string CheckIPEx(string str)
         {
             int i;
             string ret = "";
-            for (i = 0; i < 3; i++)
+            for (i = 0; i < 2; i++)//首先检测则的,然后是录的
             {
                 if (i == 0)
                     ret = CheckIP_FXTZ(str) + "(则)";
                 else
-                    ret = CheckIP(str) + "(录)";
+                    ret = CheckIP(str) + " (录)";
                 if (!Regex.Match(ret, @"Unavailable\(.+\)").Success)
                 {
                     break;
@@ -90,7 +207,11 @@ namespace SnprIPGet
             return ret;
         }
 
-        public string CheckIP_FXTZ(string str)
+
+        /*
+         * 对则的IP数据包检测
+         */
+        public static string CheckIP_FXTZ(string str)
         {
             Match mat = Regex.Match(str, "([0-9]+).([0-9]+).([0-9]+).([0-9]+):(.+)");
             byte[] ipArr = new byte[4];
@@ -105,20 +226,24 @@ namespace SnprIPGet
                 }
                 addr = new IPAddress(ipArr);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                return "Unavailable";
+                return "Unavailable-Invaild IP";
             }
             int port = int.Parse(mat.Result("$5"));
-            UdpClient ptarget;
-            try
-            {
-                ptarget = new UdpClient(r.Next(10000, 30000));
+            UdpClient ptarget=null;
+            for (int tmp = 0; tmp < 10;tmp++ ){
+                try
+                {
+                    ptarget = new UdpClient(r.Next(10000, 30000));
+                }
+                catch (Exception)
+                {
+                    //Skip This Exception
+                }
+                if(ptarget!=null)break;
             }
-            catch (Exception e)
-            {
-                return "Unavailable?";
-            }
+            if (ptarget == null) return "Unavailable- Can't Bind to a Port";
             List<Socket> sk = new List<Socket>();
             Byte[] pingdata = new Byte[37]
 		            {
@@ -130,6 +255,9 @@ namespace SnprIPGet
 
             int before = Environment.TickCount;
             ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+            ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+            ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+            //Send More than one time,refer to Snpr
             sk.Add(ptarget.Client);
             Socket.Select(sk, null, null, (int)2 * 1000);
             int currentdelay = Environment.TickCount - before;
@@ -138,7 +266,7 @@ namespace SnprIPGet
             {
                 for (; ; )
                 {
-                    ptarget.Client.ReceiveTimeout = 150;
+                    ptarget.Client.ReceiveTimeout = 200;
                     byte[] rdata = ptarget.Receive(ref ipe);
                     if (rdata.Length == 1 && rdata[0] == 3)
                     {
@@ -151,16 +279,22 @@ namespace SnprIPGet
                     break;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
+                //Remote Host Closed This Connection
                 ptarget.Close();
                 return "Unavailable";
             }
+            //No Reply
             ptarget.Close();
             return "Unavailable";
         }
 
-        public string CheckIP(string str)
+
+        /*
+         * 对录的数据包检测
+         */
+        public static string CheckIP(string str)
         {
             Match mat = Regex.Match(str, "([0-9]+).([0-9]+).([0-9]+).([0-9]+):(.+)");
             byte[] ipArr = new byte[4];
@@ -175,20 +309,25 @@ namespace SnprIPGet
                 }
                 addr = new IPAddress(ipArr);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                return "Unavailable";
+                return "Unavailable-Invaild IP";
             }
             int port = int.Parse(mat.Result("$5"));
-            UdpClient ptarget;
-            try
+            UdpClient ptarget = null;
+            for (int tmp = 0; tmp < 10; tmp++)
             {
-                ptarget = new UdpClient(r.Next(10000, 30000));
+                try
+                {
+                    ptarget = new UdpClient(r.Next(10000, 30000));
+                }
+                catch (Exception)
+                {
+                    //Skip This Exception
+                }
+                if (ptarget != null) break;
             }
-            catch (Exception e)
-            {
-                return "Unavailable?";
-            }
+            if (ptarget == null) return "Unavailable- Can't Bind to a Port";
             List<Socket> sk = new List<Socket>();
             Byte[] pingdata = new Byte[24]
             {
@@ -217,6 +356,8 @@ namespace SnprIPGet
             };
             int before = Environment.TickCount;
             ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+            ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+            ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
             sk.Add(ptarget.Client);
             Socket.Select(sk, null, null, (int)2 * 1000);
             int currentdelay = Environment.TickCount - before;
@@ -225,7 +366,7 @@ namespace SnprIPGet
             {
                 for (; ; )
                 {
-                    ptarget.Client.ReceiveTimeout = 250;
+                    ptarget.Client.ReceiveTimeout = 200;
                     byte[] rdata = ptarget.Receive(ref ipe);
                     if (rdata.Length == 1 && rdata[0] == 4)
                     {
