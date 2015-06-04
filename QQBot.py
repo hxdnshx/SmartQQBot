@@ -535,7 +535,7 @@ class group_thread(threading.Thread):
     def reply(self, content):
         reqURL = "http://d.web2.qq.com/channel/send_qun_msg2"
         data = (
-            ('r', '{{"group_uin":{0}, "face":564,"content":"[\\"{4}\\",[\\"font\\",{{\\"name\\":\\"Arial\\",\\"size\\":\\"10\\",\\"style\\":[0,0,0],\\"color\\":\\"000000\\"}}]]","clientid":"{1}","msg_id":{2},"psessionid":"{3}"}}'.format(self.guin, ClientID, msgId, PSessionID, content)),
+            ('r', '{{"group_uin":{0}, "face":564,"content":"[\\"{4}\\",[\\"font\\",{{\\"name\\":\\"Microsoft YaHei UI\\",\\"size\\":\\"10\\",\\"style\\":[0,0,0],\\"color\\":\\"000000\\"}}]]","clientid":"{1}","msg_id":{2},"psessionid":"{3}"}}'.format(self.guin, ClientID, msgId, PSessionID, content)),
             ('clientid', ClientID),
             ('psessionid', PSessionID)
         )
@@ -668,7 +668,7 @@ class group_thread(threading.Thread):
                 if "Unavailable" in retinfo:
                     ActiveIPList.remove(ipinfo)
                 else:
-                    retstr+= retinfo + '   '
+                    retstr+= retinfo + r'\\n'
             self.reply(retstr)
             return True
         return False
@@ -709,8 +709,8 @@ class group_thread(threading.Thread):
                     return
                 if self.callout(content):
                     return
-                #if self.repeat(content):
-                #    return
+                if self.repeat(content):
+                    return
                 
         else:
             print "message seq repeat detected."
