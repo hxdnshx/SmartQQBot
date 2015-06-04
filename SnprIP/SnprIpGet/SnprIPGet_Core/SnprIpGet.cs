@@ -43,7 +43,7 @@ namespace SnprIPGet
                 ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/netgame/14382/", 60, "", null);
                 str = HttpHelper.GetResponseString(ret);
                 ///bbs/read.cgi/netgame/14382/1432657204/l50">4</a> : <a rel="nofollow" href="#4">【テンプレ必読】「Hard」ネット対戦スレッド -008-
-                MatchCollection Matches = Regex.Matches(str, ">/</font> <a rel=\"nofollow\" href=\"/bbs/read.cgi/netgame/14382/([0-9]+)/l50[^【]{1,400}【テンプレ必読】「Lunatic」ネット対戦スレッド");
+                MatchCollection Matches = Regex.Matches(str, "<a rel=\"nofollow\" href=\"/bbs/read.cgi/netgame/14382/([0-9]+)/l50[^【]{1,100}【テンプレ必読】「" + Difficulty + "」ネット対戦スレッド");
                 //MessageBox.Show(Matches[0].Result("$1"));
                 HardID = int.Parse(Matches[0].Result("$1"));
             }
@@ -105,7 +105,7 @@ namespace SnprIPGet
             {
                 ret = HttpHelper.CreateGetHttpResponse(@"https://twitter.com/hashtag/" + tagName, 60, "", null);
                 str = HttpHelper.GetResponseStringRegular(ret);
-                retstr = "推上最新ip:";
+                retstr = "";
                 int i = 0;
                 string check;
 
@@ -113,15 +113,15 @@ namespace SnprIPGet
                 foreach (Match mat in Matches)
                 {
                     check = CheckIPEx(mat.Result("$3"));
-                    if (check == "Unavailable") continue;
-                    retstr += "\r\n" + mat.Result("$1") + " - " + mat.Result("$3") + "  " + check + "   " + mat.Result("$2");
+                    if (check[0] == 'U') continue;//$2是时间 $3是ip $1是用户名
+                    retstr += "\r\n" + mat.Result("$3") + "\t" + check + "\t" + mat.Result("$1");
                     i++;
                     if (i == 5) break;
                 }
             }
             catch(Exception e)
             {
-                retstr = "推上最新ip:\n\r" + e.ToString();
+                retstr = "" + e.ToString();
             }
             return retstr;
         }
@@ -162,14 +162,14 @@ namespace SnprIPGet
             {
                 check = CheckIPEx(infomat.Result("$1"));
                 if (check[0] == 'U') return "";
-                return infomat.Result("$1") + " 使用角色:" + infomat.Result("$2") + "  " + check + "\r\n";
+                return infomat.Result("$1") + "\t" + infomat.Result("$2") + " \t" + check + "\r\n";
             }
             infomat = Regex.Match(info.Result("$5"), "【IP】([^<]+)<br>【Port】([^<]+)<br>[^○]+【使用キャラ】([^<]+)");
             if (infomat.Success)
             {
                 check = CheckIPEx(infomat.Result("$1") + ":" + infomat.Result("$2"));
                 if (check[0] == 'U') return "";
-                return infomat.Result("$1") + ":" + infomat.Result("$2") + " 使用角色:" + infomat.Result("$3") + "  " + check + "\r\n";
+                return infomat.Result("$1") + ":" + infomat.Result("$2") + " \t" + infomat.Result("$3") + " \t" + check + "\r\n";
             }
             infomat = Regex.Match(info.Result("$5"), "&gt;&gt;([0-9]+)</a>再募集");
             if (infomat.Success)
@@ -193,7 +193,7 @@ namespace SnprIPGet
             string ret = "";
             for (i = 0; i < 2; i++)//首先检测则的,然后是录的
             {
-                if (i == 0)
+                if (i != 0)
                     ret = CheckIP_FXTZ(str) + "(则)";
                 else
                     ret = CheckIP(str) + " (录)";
@@ -387,7 +387,7 @@ namespace SnprIPGet
                     else if (rdata.Length == 32 && rdata[0] == 0x0c)
                     {
                         ptarget.Close();
-                        return "没人插入或禁止观战";
+                        return "观战不能";
                     }
                     else if (rdata.Length == 92 && rdata[0] == 0x0b)
                     {

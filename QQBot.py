@@ -535,7 +535,7 @@ class group_thread(threading.Thread):
     def reply(self, content):
         reqURL = "http://d.web2.qq.com/channel/send_qun_msg2"
         data = (
-            ('r', '{{"group_uin":{0}, "face":564,"content":"[\\"{4}\\",[\\"font\\",{{\\"name\\":\\"Arial\\",\\"size\\":\\"10\\",\\"style\\":[0,0,0],\\"color\\":\\"000000\\"}}]]","clientid":"{1}","msg_id":{2},"psessionid":"{3}"}}'.format(self.guin, ClientID, msgId, PSessionID, content.replace("\\", "\\\\\\\\"))),
+            ('r', '{{"group_uin":{0}, "face":564,"content":"[\\"{4}\\",[\\"font\\",{{\\"name\\":\\"Arial\\",\\"size\\":\\"10\\",\\"style\\":[0,0,0],\\"color\\":\\"000000\\"}}]]","clientid":"{1}","msg_id":{2},"psessionid":"{3}"}}'.format(self.guin, ClientID, msgId, PSessionID, content)),
             ('clientid', ClientID),
             ('psessionid', PSessionID)
         )
@@ -560,7 +560,8 @@ class group_thread(threading.Thread):
             try:
                 
                 infotxt=fp.read()
-                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\n',r'\\n')
+                infotxt=infotxt.replace('\t',r'\\t')
                 infotxt=infotxt.replace('\r','')
                 self.reply(infotxt)
             finally:
@@ -583,7 +584,8 @@ class group_thread(threading.Thread):
             try:
                 
                 infotxt=fp.read()
-                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\n',r'\\n')
+                infotxt=infotxt.replace('\t',r'\\t')
                 infotxt=infotxt.replace('\r','')
                 self.reply(infotxt)
             finally:
@@ -604,7 +606,8 @@ class group_thread(threading.Thread):
             try:
                 
                 infotxt=fp.read()
-                infotxt=infotxt.replace('\n','     ')
+                infotxt=infotxt.replace('\n',r'\\n')
+                infotxt=infotxt.replace('\t',r'\\t')
                 infotxt=infotxt.replace('\r','')
                 self.reply(infotxt)
             finally:
@@ -659,7 +662,8 @@ class group_thread(threading.Thread):
             retstr="当前活跃对战ip:"
             for ipinfo in ActiveIPList:
                 retinfo=self.ipcheckfunc(ipinfo)
-                retinfo=retinfo.replace('\n','     ')
+                retinfo=retinfo.replace('\n',r'\\n')
+                retinfo=retinfo.replace('\t',r'\\t')
                 retinfo=retinfo.replace('\r','')
                 if "Unavailable" in retinfo:
                     ActiveIPList.remove(ipinfo)
@@ -775,7 +779,8 @@ class group_thread(threading.Thread):
                      all_the_text = file_object.read( )
                      #if not all_the_text:
                      #    break
-                     all_the_text=all_the_text.replace('\n','     ')
+                     all_the_text=all_the_text.replace('\n',r'\\n')
+                     all_the_text=all_the_text.replace('\t',r'\\t')
                      all_the_text=all_the_text.replace('\r','')
                      self.reply(all_the_text)
                      #time.sleep(1);

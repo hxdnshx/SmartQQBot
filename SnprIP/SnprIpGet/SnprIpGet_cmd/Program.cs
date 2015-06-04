@@ -15,6 +15,7 @@ using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 using SnprIpGet;
+using SnprIPGet;
 
 namespace SnprIpGet_cmd
 {
@@ -360,49 +361,20 @@ namespace SnprIpGet_cmd
                     return;
                 }
             }
-            inst.GetHardId();
+            //inst.GetHardId();
             bool updateflag=false;
             int ti;
+            int hid;
             for(;;)
             {
-                if(updateflag)
-                {
-                    inst.GetHardId();
-                    updateflag = false;
-                }
-                HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"http://jbbs.shitaraba.net/bbs/rawmode.cgi/netgame/14382/" + inst.HardID + "/l20", 60, "", null);
-                string str = HttpHelper.GetResponseString(ret);
-                string retstr = "当前揭示板Lunatic难度IP:(更新时间:" + DateTime.Now.ToString() + ")\r\n";
-                MatchCollection Matches = Regex.Matches(str, @"([0-9]+)<>([^<]*)<>([^<]*)<>([^<]*)<>([^\n]+?)<>([^<]*)<>([^<]*)\n");
-                foreach (Match mat in Matches)
-                {
-                    ti=int.Parse(mat.Result("$1"));
-                    if (ti > 990) updateflag = true;
-                    if (ti != 1)
-                    {
-                        retstr += inst.GetIPInfo(mat);
-                    }
-
-                }
-                ret = HttpHelper.CreateGetHttpResponse(@"https://twitter.com/hashtag/th145", 60, "", null);
-                str = HttpHelper.GetResponseStringRegular(ret);
-                retstr += "推上最新ip:";
-                int i = 0;
-                string check;
-
-                Matches = Regex.Matches(str, "with-id\" data-aria-label-part>([^<]+)[.\\s\\S]*?last\">([^<]+)[.\\s\\S]*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+)");//"<small class=\"time\">.*?title=\"([^\"]+)\".*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9])");
-                foreach (Match mat in Matches)
-                {
-                    check = inst.CheckIPEx(mat.Result("$3"));
-                    if (check == "Unavailable") continue;
-                    retstr += "\r\n" + mat.Result("$1") + " - " + mat.Result("$3") + "  " + check + "   " + mat.Result("$2");
-                    i++;
-                    if (i == 5) break;
-                }
+                hid = SnprIPGet.SnprIpHelper.GetLineId("Lunatic");
+                string retstr = "当前揭示板Lunatic难度IP:(更新时间:" + DateTime.Now.ToString() + ")" + SnprIpHelper.GetShitabaraInfo(hid, 20) ;
+                retstr += "\n\r推上最新ip:" + SnprIpHelper.GetTwitterTagInfo("th145");
+                
                 File.WriteAllText(args[0], retstr, Encoding.UTF8);
                 Console.Write(retstr);
                 Console.Write("\r\nDataUpdated\r\n");
-                System.Threading.Thread.Sleep(300000);//休息5分钟
+                System.Threading.Thread.Sleep(60000);//休息5分钟
             }
         }
     }
