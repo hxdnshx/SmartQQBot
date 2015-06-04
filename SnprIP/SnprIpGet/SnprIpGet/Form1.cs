@@ -42,19 +42,10 @@ namespace SnprIpGet
 
         private void button3_Click(object sender, EventArgs e)
         {
-            HttpWebResponse ret = HttpHelper.CreateGetHttpResponse(@"https://twitter.com/hashtag/th145", 60, "", null);
-            string str = HttpHelper.GetResponseStringRegular(ret);
+            
             string retstr="\r\nTwitter上最新5个ip:";
-            int i = 0;
-
-            MatchCollection Matches = Regex.Matches(str, "with-id\" data-aria-label-part>([^<]+)[.\\s\\S]*?last\">([^<]+)[.\\s\\S]*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+)");//"<small class=\"time\">.*?title=\"([^\"]+)\".*?([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9])");
-            foreach (Match mat in Matches)
-            {
-                retstr += "\r\n" + mat.Result("$1") + " - " + mat.Result("$3") + "   " + mat.Result("$2");
-                i++;
-                if (i == 5) break;
-            }
-            textBox2.Text = retstr;
+            
+            textBox2.Text = retstr + SnprIpHelper.GetTwitterTagInfo("th145");
         }
 
         private void button4_Click(object sender, EventArgs e)
