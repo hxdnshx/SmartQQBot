@@ -218,6 +218,7 @@ namespace SnprIPGet
             Random r = new Random();
             int i;
             IPAddress addr;
+            int port;
             try
             {
                 for (i = 1; i < 5; ++i)
@@ -225,12 +226,12 @@ namespace SnprIPGet
                     ipArr[i - 1] = byte.Parse(mat.Result("$" + i));
                 }
                 addr = new IPAddress(ipArr);
+                port = int.Parse(mat.Result("$5"));
             }
             catch (Exception)
             {
                 return "Unavailable-Invaild IP";
             }
-            int port = int.Parse(mat.Result("$5"));
             UdpClient ptarget=null;
             for (int tmp = 0; tmp < 10;tmp++ ){
                 try
@@ -262,7 +263,7 @@ namespace SnprIPGet
             }
             catch(Exception)
             {
-                return "Unavailable";
+                return "Unavailable - Invaild Port";
             }
             //Send More than one time,refer to Snpr
             sk.Add(ptarget.Client);
@@ -290,7 +291,7 @@ namespace SnprIPGet
             {
                 //Remote Host Closed This Connection
                 ptarget.Close();
-                return "Unavailable";
+                return "Unavailable - Connection Time out";
             }
             //No Reply
             ptarget.Close();
@@ -308,6 +309,7 @@ namespace SnprIPGet
             Random r = new Random();
             int i;
             IPAddress addr;
+            int port;
             try
             {
                 for (i = 1; i < 5; ++i)
@@ -315,12 +317,12 @@ namespace SnprIPGet
                     ipArr[i - 1] = byte.Parse(mat.Result("$" + i));
                 }
                 addr = new IPAddress(ipArr);
+                port = int.Parse(mat.Result("$5"));
             }
             catch (Exception)
             {
                 return "Unavailable-Invaild IP";
-            }
-            int port = int.Parse(mat.Result("$5"));
+            } 
             UdpClient ptarget = null;
             for (int tmp = 0; tmp < 10; tmp++)
             {
@@ -370,7 +372,7 @@ namespace SnprIPGet
             }
             catch(Exception)
             {
-                return "Unavailable";
+                return "Unavailable - Invaild Port";
             }
             sk.Add(ptarget.Client);
             Socket.Select(sk, null, null, (int)2 * 1000);
@@ -415,7 +417,7 @@ namespace SnprIPGet
             catch (Exception e)
             {
                 ptarget.Close();
-                return "Unavailable";
+                return "Unavailable - Connection Time out";
             }
             ptarget.Close();
             return "Unavailable";
