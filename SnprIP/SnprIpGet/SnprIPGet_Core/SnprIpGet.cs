@@ -254,9 +254,16 @@ namespace SnprIPGet
 		            }; ;
 
             int before = Environment.TickCount;
-            ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
-            ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
-            ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+            try
+            {
+                ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 37, new IPEndPoint(addr, port));
+            }
+            catch(Exception)
+            {
+                return "Unavailable";
+            }
             //Send More than one time,refer to Snpr
             sk.Add(ptarget.Client);
             Socket.Select(sk, null, null, (int)2 * 1000);
@@ -355,9 +362,16 @@ namespace SnprIPGet
                 0x10,0x07,0x16,0x01,0xe3,0x80,0x0f,0x00,0x02,0x00,0x00,0x00
             };
             int before = Environment.TickCount;
-            ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
-            ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
-            ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+            try
+            {
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+            }
+            catch(Exception)
+            {
+                return "Unavailable";
+            }
             sk.Add(ptarget.Client);
             Socket.Select(sk, null, null, (int)2 * 1000);
             int currentdelay = Environment.TickCount - before;
