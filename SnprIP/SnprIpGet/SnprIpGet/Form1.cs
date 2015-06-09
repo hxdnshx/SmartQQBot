@@ -251,5 +251,10 @@ namespace SnprIpGet
         {
             MessageBox.Show(CheckIPEx(textBox4.Text));
         }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            textBox2.Text = SnprIpHelper.CrashIP(textBox4.Text);
+        }
     }
 }

