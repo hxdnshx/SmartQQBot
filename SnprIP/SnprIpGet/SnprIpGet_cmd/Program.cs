@@ -284,7 +284,7 @@ namespace SnprIpGet_cmd
             {
                 if(args[1]== "-i")//测试ip
                 {
-                    File.WriteAllText(args[0], args[2] + "的当前状态:"+ inst.CheckIPEx(args[2]), Encoding.UTF8);
+                    File.WriteAllText(args[0], args[2] + "\t"+ SnprIpHelper.CheckIPEx(args[2]), Encoding.UTF8);
                     return;
                 }
                 if(args[1]=="-z")//Tenco 战斗力(则)
