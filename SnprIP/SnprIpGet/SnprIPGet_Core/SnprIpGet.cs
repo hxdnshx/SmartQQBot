@@ -197,7 +197,7 @@ namespace SnprIPGet
                     ret = CheckIP_FXTZ(str) + "(则)";
                 else
                     ret = CheckIP(str) + " (录)";
-                if (!Regex.Match(ret, @"Unavailable\(.+\)").Success)
+                if (ret[0]=='U')//Unavailable
                 {
                     break;
                 }
